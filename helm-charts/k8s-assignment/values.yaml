@@ -1,0 +1,105 @@
+# Default values for k8s-assignment
+# This is a YAML-formatted file.
+
+# Global settings
+global:
+  namespace: k8s-assignment
+
+# MySQL Database Configuration
+mysql:
+  enabled: true
+  image:
+    repository: mysql
+    tag: "8.0"
+    pullPolicy: IfNotPresent
+  
+  # Database configuration
+  database: testdb
+  username: testuser
+  rootPassword: root
+  password: test
+  
+  # Storage configuration
+  storage:
+    size: 10Gi
+    storageClass: ""
+  
+  # Resource limits
+  resources:
+    requests:
+      memory: "256Mi"
+      cpu: "250m"
+    limits:
+      memory: "512Mi"
+      cpu: "500m"
+  
+  # Service configuration
+  service:
+    type: ClusterIP
+    port: 3306
+
+# Nginx Web Server Configuration
+nginx:
+  enabled: true
+  image:
+    repository: nginx
+    tag: "1.25"
+    pullPolicy: IfNotPresent
+  
+  # Replica count
+  replicas: 3
+  
+  # Service configuration
+  service:
+    type: NodePort
+    port: 80
+    nodePort: 30080
+  
+  # Resource limits
+  resources:
+    requests:
+      memory: "128Mi"
+      cpu: "100m"
+    limits:
+      memory: "256Mi"
+      cpu: "200m"
+
+# Pod Watcher Configuration
+podWatcher:
+  enabled: true
+  image:
+    repository: pod-watcher
+    tag: "latest"
+    pullPolicy: Always
+  
+  # Resource limits
+  resources:
+    requests:
+      memory: "64Mi"
+      cpu: "50m"
+    limits:
+      memory: "128Mi"
+      cpu: "100m"
+
+# Network Policies
+networkPolicies:
+  enabled: true
+  
+  # MySQL network policy
+  mysql:
+    enabled: true
+  
+  # Nginx network policy
+  nginx:
+    enabled: true
+
+# Disaster Recovery
+disasterRecovery:
+  enabled: true
+  
+  # Backup configuration
+  backup:
+    schedule: "0 2 * * *"  # Daily at 2 AM
+    retention: 7  # Keep 7 days of backups
+    storage:
+      size: 5Gi

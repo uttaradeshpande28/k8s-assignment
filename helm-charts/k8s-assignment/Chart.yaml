@@ -1,0 +1,17 @@
+apiVersion: v2
+name: k8s-assignment
+description: Kubernetes Assignment MVP with MySQL, Nginx, and Pod Monitoring
+type: application
+version: 1.0.0
+appVersion: "1.0.0"
+keywords:
+  - kubernetes
+  - mysql
+  - nginx
+  - monitoring
+home: https://github.com/uttaradeshpande28/k8s-assignment
+sources:
+  - https://github.com/uttaradeshpande28/k8s-assignment
+maintainers:
+  - name: Uttara Deshpande
+    email: uttarabayani@yahoo.com
