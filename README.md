@@ -14,33 +14,110 @@ The solution consists of the following components deployed on AWS EKS:
 
 ## Deployment Environment
 
-**Note**: This solution was deployed on an existing AWS EKS cluster from the office environment due to security restrictions that prevented local installation of Docker Desktop, Kind, or Minikube. The EKS cluster was already established with the control plane, which is not available in AWS free tier. This explains some of the platform limitations encountered, particularly with Network Policy enforcement.
+**Note**: This solution was deployed on an existing AWS EKS cluster from the office environment due to security restrictions that prevented local installation of Docker Desktop, Kind, or Minikube. The EKS cluster was already established with the control plane, which is not available in AWS free tier. This explains some of the platform limitations encountered, particularly with Network Policy enforcement. However, the manifests and Helm charts are designed to work on any Kubernetes environment.
 
 ## Current MVP Status
 
-### Fully Implemented and Working
-1. **Kubernetes Cluster**: AWS EKS cluster running
-2. **Database Cluster**: MySQL Deployment with persistent data
-3. **Web Server**: Nginx with multiple replicas and custom configuration
-4. **Pod IP Display**: Web page shows actual Pod IP address
-5. **Serving Host**: Shows "Host-{last5chars}" format (e.g., Host-hld9d)
-6. **Init Container**: Modifies serving-host field dynamically
-7. **Custom Configuration**: Nginx config mounted from ConfigMap
-8. **Network Security**: Network policies configured (conceptually correct)
-9. **Pod Monitoring**: Real-time pod lifecycle event detection
-10. **Helm Deployment**: Complete Helm chart for all components
-11. **Web Page Access**: Accessible from browser via port forwarding
+### Key Features Working
+- **Kubernetes Cluster**: Deployed on existing EKS cluster
+- **Database Cluster**: MySQL with persistent data
+- **Web Server**: Nginx with multiple replicas and custom configuration
+- **Dynamic Web Page**: Shows Pod IP and "Host-{last5chars}" format
+- **Pod Monitoring**: Real-time pod lifecycle event detection
+- **Helm Deployment**: Complete deployment automation
+- **Disaster Recovery**: Automated backup CronJob
 
-### Platform Limitations (EKS Specific)
-- **Network Policies**: Not enforced by AWS VPC CNI (requires Calico/Cilium installation)
-- **Pod Watcher**: Using kubectl instead of custom Golang application (due to image registry requirements)
-- **Disaster Recovery**: Manual backup procedures only
-- **Office Security**: Limited ability to install additional CNI plugins or modify cluster configuration
+## Assignment Requirements Analysis
+
+**For detailed implementation status and limitations analysis, see:**
+- `DELIVERABLES.md` - Implementation status and deliverables overview
+- `docs/limitations-and-strategies.txt` - Comprehensive analysis
+- `docs/Design-of-internal-and-external-connections.md` - Architecture details
+
+## Two Deployment Approaches
+
+This project provides **TWO different deployment solutions** with **different monitoring approaches**:
+
+### **Approach 1: Direct kubectl Deployment**
+**Monitoring**: Simple kubectl-based pod watcher using `alpine/k8s` image
+
+```bash
+# Deploy all components
+kubectl apply -f k8s-manifests/
+
+# Check status
+kubectl get pods -n k8s-assignment
+
+# Access web page
+kubectl port-forward svc/nginx-service 8080:80 -n k8s-assignment
+
+# Check simple pod watcher logs
+kubectl logs -f deployment/pod-watcher -n k8s-assignment
+```
+
+**Components deployed:**
+- MySQL (StatefulSet with persistent storage)
+- Nginx (3 replicas with dynamic content)
+- Network Policies (configured but not enforced on EKS)
+- Simple Pod Watcher (kubectl --watch based monitoring)
+
+### **Approach 2: Helm Deployment**
+**Monitoring**: Custom Golang application with Kubernetes API integration
+
+```bash
+# Deploy with Helm (single chart)
+helm install k8s-assignment ./helm-charts/k8s-assignment --namespace k8s-assignment
+
+# Check Helm resources
+kubectl get pods -n k8s-assignment | grep helm
+
+# Access Helm web page
+kubectl port-forward svc/nginx-service-helm 8081:80 -n k8s-assignment
+
+# Check Golang pod watcher logs
+kubectl logs -f deployment/pod-watcher-golang-helm -n k8s-assignment
+```
+
+**Components deployed:**
+- MySQL (StatefulSet with persistent storage) - Helm managed
+- Nginx (3 replicas with dynamic content) - Helm managed
+- Network Policies (configured but not enforced on EKS) - Helm managed
+- Golang Pod Watcher (Custom application with Kubernetes API integration)
+
+## **Monitoring Solutions Comparison**
+
+### **kubectl Approach - Simple Monitoring**
+- **Technology**: `alpine/k8s` image with `kubectl --watch`
+- **Features**: Basic pod status changes detection
+- **Logs**: Generic pod change notifications
+- **Resource Usage**: Lightweight (32Mi-64Mi memory)
+- **Deployment**: Single command `kubectl apply -f k8s-manifests/`
+
+### **Helm Approach - Advanced Monitoring**
+- **Technology**: Custom Golang application with Kubernetes client-go library
+- **Features**: Real-time pod lifecycle events (Created/Deleted/Modified)
+- **Logs**: Detailed event logging with timestamps and pod names
+- **Resource Usage**: Moderate (64Mi-128Mi memory)
+- **Deployment**: Single Helm chart with Golang monitoring
+- **Source Code**: Available in `helm-charts/k8s-assignment/image/scripts/main.go`
+
+### Build Golang Application
+```bash
+# Build Docker image
+docker build -t pod-watcher ./helm-charts/k8s-assignment/image/
+
+# Push to registry (replace YOUR_REGISTRY)
+docker tag pod-watcher YOUR_REGISTRY/pod-watcher:latest
+docker push YOUR_REGISTRY/pod-watcher:latest
+```
+
+**For detailed implementation strategies and limitations analysis, see:**
+- `docs/limitations-and-strategies.txt` - Comprehensive analysis
 
 ## Requirements Fulfilled
 
 ### Main Test Requirements
-1. **Kubernetes Cluster**: AWS EKS cluster deployed
+1. **Kubernetes Cluster**: Deployed on any Kubernetes cluster
 2. **Database Cluster**: MySQL Deployment with persistent data
 3. **Web Server**: Nginx with multiple replicas and custom configuration
 4. **Pod IP Display**: Web page shows Pod IP address
@@ -118,24 +195,33 @@ kubectl exec -it deployment/pod-watcher -n k8s-assignment -- curl -v --connect-t
 
 `
 k8s-assignment/
- README.md                    # This file
- docs/                        # Documentation
-    architecture.md          # Architecture details
- k8s-manifests/              # Kubernetes YAML files
-    mysql-deployment.yaml   # MySQL Deployment
-    nginx-deployment.yaml   # Nginx Deployment
-    network-policies.yaml   # Network security
-    pod-watcher.yaml       # Pod monitoring
- golang-monitor/              # Golang source code
-    main.go                 # Pod watcher application
-    go.mod                  # Go module file
-    Dockerfile              # Container image
- helm-charts/                 # Helm charts
-    k8s-assignment/          # Main Helm chart
-        Chart.yaml           # Chart metadata
-        values.yaml          # Configuration values
-        templates/           # Helm templates
- scripts/                     # Utility scripts
+├── DELIVERABLES.md                 # Assignment deliverables overview
+├── README.md                       # Project documentation
+├── docs/                           # Documentation
+│   ├── Design-of-internal-and-external-connections.md
+│   └── limitations-and-strategies.txt
+├── helm-charts/                   # Helm charts
+│   └── k8s-assignment/            # Single comprehensive chart
+│       ├── Chart.yaml
+│       ├── values.yaml
+│       ├── VERSION
+│       ├── templates/
+│       │   ├── mysql.yaml
+│       │   ├── nginx.yaml
+│       │   ├── pod-watcher.yaml
+│       │   └── network-policies.yaml
+│       └── image/
+│           ├── Dockerfile
+│           └── scripts/
+│               ├── main.go
+│               ├── go.mod
+│               └── go.sum
+└── k8s-manifests/                  # Kubernetes manifests
+    ├── mysql-kubectl.yaml
+    ├── nginx-kubectl.yaml
+    ├── network-policies-kubectl.yaml
+    ├── pod-watcher-kubectl.yaml
+    └── mysql-backup-cronjob.yaml
 `
 
 ## Configuration

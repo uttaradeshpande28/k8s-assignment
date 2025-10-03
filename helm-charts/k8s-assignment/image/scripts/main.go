@@ -7,6 +7,7 @@ import (
 "os"
 "time"
 
+corev1 "k8s.io/api/core/v1"
 metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 "k8s.io/apimachinery/pkg/fields"
 "k8s.io/apimachinery/pkg/watch"
@@ -52,7 +53,10 @@ return clientset, nil
 }
 
 func watchPods(client *kubernetes.Clientset) {
-namespace := "k8s-assignment"
+namespace := os.Getenv("NAMESPACE")
+if namespace == "" {
+namespace = "k8s-assignment" // Default fallback
+}
 
 log.Printf("Watching pods in namespace: %s", namespace)
 
@@ -69,21 +73,20 @@ continue
 
 // Process events
 for event := range watcher.ResultChan() {
-pod, ok := event.Object.(*metav1.Object)
+pod, ok := event.Object.(*corev1.Pod)
 if !ok {
 continue
 }
 
-podMeta := pod.(*metav1.ObjectMeta)
 timestamp := time.Now().Format("2006-01-02 15:04:05")
 
 switch event.Type {
 case watch.Added:
-log.Printf("[%s] Pod CREATED: %s in namespace %s", timestamp, podMeta.Name, podMeta.Namespace)
+log.Printf("[%s] Pod CREATED: %s in namespace %s", timestamp, pod.Name, pod.Namespace)
 case watch.Deleted:
-log.Printf("[%s] Pod DELETED: %s in namespace %s", timestamp, podMeta.Name, podMeta.Namespace)
+log.Printf("[%s] Pod DELETED: %s in namespace %s", timestamp, pod.Name, pod.Namespace)
 case watch.Modified:
-log.Printf("[%s] Pod UPDATED: %s in namespace %s", timestamp, podMeta.Name, podMeta.Namespace)
+log.Printf("[%s] Pod UPDATED: %s in namespace %s", timestamp, pod.Name, pod.Namespace)
 }
 }
 

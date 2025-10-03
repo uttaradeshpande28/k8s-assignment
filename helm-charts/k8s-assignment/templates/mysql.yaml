@@ -1,0 +1,75 @@
+{{- if .Values.mysql.enabled }}
+apiVersion: v1
+kind: Secret
+metadata:
+  name: mysql-secret-helm
+  namespace: {{ .Values.global.namespace }}
+type: Opaque
+data:
+  mysql-root-password: {{ .Values.mysql.rootPassword | b64enc }}
+  mysql-password: {{ .Values.mysql.password | b64enc }}
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: mysql-helm
+  namespace: {{ .Values.global.namespace }}
+spec:
+  serviceName: mysql-helm
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mysql-helm
+  template:
+    metadata:
+      labels:
+        app: mysql-helm
+    spec:
+      containers:
+      - name: mysql
+        image: {{ .Values.mysql.image.repository }}:{{ .Values.mysql.image.tag }}
+        imagePullPolicy: {{ .Values.mysql.image.pullPolicy }}
+        ports:
+        - containerPort: 3306
+        env:
+        - name: MYSQL_ROOT_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: mysql-secret-helm
+              key: mysql-root-password
+        - name: MYSQL_DATABASE
+          value: {{ .Values.mysql.database | quote }}
+        - name: MYSQL_USER
+          value: {{ .Values.mysql.username | quote }}
+        - name: MYSQL_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: mysql-secret-helm
+              key: mysql-password
+        volumeMounts:
+        - name: mysql-data
+          mountPath: /var/lib/mysql
+        resources:
+          {{- toYaml .Values.mysql.resources | nindent 10 }}
+  volumeClaimTemplates:
+  - metadata:
+      name: mysql-data
+    spec:
+      accessModes: ["ReadWriteOnce"]
+      resources:
+        requests:
+          storage: 10Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mysql-helm
+  namespace: {{ .Values.global.namespace }}
+spec:
+  selector:
+    app: mysql-helm
+  ports:
+  - port: {{ .Values.mysql.service.port }}
+    targetPort: 3306
+  type: {{ .Values.mysql.service.type }}
+{{- end }}

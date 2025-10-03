@@ -1,0 +1,55 @@
+{{- if .Values.podWatcher.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: pod-watcher-golang-helm
+  namespace: {{ .Values.global.namespace }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: pod-watcher-golang-helm
+  template:
+    metadata:
+      labels:
+        app: pod-watcher-golang-helm
+    spec:
+      serviceAccountName: pod-watcher-golang-helm
+      containers:
+      - name: pod-watcher-golang
+        image: {{ .Values.podWatcher.image.repository }}:{{ .Values.podWatcher.image.tag }}
+        imagePullPolicy: {{ .Values.podWatcher.image.pullPolicy }}
+        env:
+        - name: NAMESPACE
+          value: {{ .Values.global.namespace | quote }}
+        resources:
+          {{- toYaml .Values.podWatcher.resources | nindent 10 }}
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: pod-watcher-golang-helm
+  namespace: {{ .Values.global.namespace }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: pod-watcher-golang-helm
+rules:
+- apiGroups: [""]
+  resources: ["pods"]
+  verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: pod-watcher-golang-helm
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: pod-watcher-golang-helm
+subjects:
+- kind: ServiceAccount
+  name: pod-watcher-golang-helm
+  namespace: {{ .Values.global.namespace }}
+{{- end }}

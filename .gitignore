@@ -57,5 +57,10 @@ __pycache__/
 kubeconfig
 kubeconfig.*
 
-# SpecStory files (optional - you can keep these for history)
+# Cursor IDE files
+.cursorindexingignore
 .specstory/
+
+# Executable files
+kind.exe
+minikube.exe

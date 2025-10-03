@@ -1,9 +1,10 @@
 apiVersion: apps/v1
-kind: DaemonSet
+kind: Deployment
 metadata:
   name: pod-watcher
   namespace: k8s-assignment
 spec:
+  replicas: 1
   selector:
     matchLabels:
       app: pod-watcher

@@ -9,11 +9,12 @@ data:
   mysql-password: dGVzdA==       # test
 ---
 apiVersion: apps/v1
-kind: Deployment
+kind: StatefulSet
 metadata:
   name: mysql
   namespace: k8s-assignment
 spec:
+  serviceName: mysql
   replicas: 1
   selector:
     matchLabels:
@@ -43,6 +44,9 @@ spec:
             secretKeyRef:
               name: mysql-secret
               key: mysql-password
+        volumeMounts:
+        - name: mysql-data
+          mountPath: /var/lib/mysql
         resources:
           requests:
             memory: "256Mi"
@@ -50,6 +54,14 @@ spec:
           limits:
             memory: "512Mi"
             cpu: "500m"
+  volumeClaimTemplates:
+  - metadata:
+      name: mysql-data
+    spec:
+      accessModes: ["ReadWriteOnce"]
+      resources:
+        requests:
+          storage: 10Gi
 ---
 apiVersion: v1
 kind: Service

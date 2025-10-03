@@ -1,0 +1,118 @@
+{{- if .Values.nginx.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: nginx-config-helm
+  namespace: {{ .Values.global.namespace }}
+data:
+  nginx.conf: |
+    events {
+        worker_connections 1024;
+    }
+    
+    http {
+        include       /etc/nginx/mime.types;
+        default_type  application/octet-stream;
+        
+        sendfile on;
+        tcp_nopush on;
+        tcp_nodelay on;
+        keepalive_timeout 65;
+        
+        server {
+            listen 80;
+            server_name localhost;
+            
+            location / {
+                root /usr/share/nginx/html;
+                index index.html;
+            }
+        }
+    }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nginx-helm
+  namespace: {{ .Values.global.namespace }}
+spec:
+  replicas: {{ .Values.nginx.replicas }}
+  selector:
+    matchLabels:
+      app: nginx-helm
+  template:
+    metadata:
+      labels:
+        app: nginx-helm
+    spec:
+      initContainers:
+      - name: init-serving-host
+        image: busybox:1.35
+        command: ['sh', '-c']
+        args:
+        - |
+          POD_NAME=$(cat /etc/podinfo/podname)
+          SERVING_HOST="Host-${POD_NAME: -5}"
+          POD_IP=$(hostname -i)
+          
+          cat > /shared/index.html << HTML
+          <!DOCTYPE html>
+          <html>
+          <head>
+              <title>Kubernetes Assignment</title>
+          </head>
+          <body>
+              <h1>Kubernetes Assignment - Web Server</h1>
+              <p><strong>Pod IP:</strong> $POD_IP</p>
+              <p><strong>Serving Host:</strong> $SERVING_HOST</p>
+          </body>
+          </html>
+          HTML
+        volumeMounts:
+        - name: podinfo
+          mountPath: /etc/podinfo
+        - name: shared-data
+          mountPath: /shared
+      containers:
+      - name: nginx
+        image: {{ .Values.nginx.image.repository }}:{{ .Values.nginx.image.tag }}
+        imagePullPolicy: {{ .Values.nginx.image.pullPolicy }}
+        ports:
+        - containerPort: 80
+        volumeMounts:
+        - name: nginx-config-helm
+          mountPath: /etc/nginx/nginx.conf
+          subPath: nginx.conf
+        - name: shared-data
+          mountPath: /usr/share/nginx/html
+        resources:
+          {{- toYaml .Values.nginx.resources | nindent 10 }}
+      volumes:
+      - name: nginx-config-helm
+        configMap:
+          name: nginx-config-helm
+      - name: shared-data
+        emptyDir: {}
+      - name: podinfo
+        downwardAPI:
+          items:
+          - path: "podname"
+            fieldRef:
+              fieldPath: metadata.name
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: nginx-service-helm
+  namespace: {{ .Values.global.namespace }}
+spec:
+  selector:
+    app: nginx-helm
+  ports:
+  - port: {{ .Values.nginx.service.port }}
+    targetPort: 80
+    {{- if eq .Values.nginx.service.type "NodePort" }}
+    nodePort: {{ .Values.nginx.service.nodePort }}
+    {{- end }}
+  type: {{ .Values.nginx.service.type }}
+{{- end }}
