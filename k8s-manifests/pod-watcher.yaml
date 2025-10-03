@@ -15,8 +15,19 @@ spec:
       serviceAccountName: pod-watcher
       containers:
       - name: pod-watcher
-        image: pod-watcher:latest
-        imagePullPolicy: Always
+        image: alpine/k8s:1.28.2
+        command: ['sh', '-c']
+        args:
+        - |
+          echo "$(date): Starting Kubernetes Pod Watcher..."
+          echo "$(date): Monitoring pods in k8s-assignment namespace"
+          while true; do
+            kubectl get pods -n k8s-assignment --watch --no-headers | while read line; do
+              echo "$(date): Pod change detected: $line"
+            done
+            echo "$(date): Watcher disconnected, reconnecting..."
+            sleep 2
+          done
         resources:
           requests:
             memory: "64Mi"
@@ -24,10 +35,6 @@ spec:
           limits:
             memory: "128Mi"
             cpu: "100m"
-        env:
-        - name: NAMESPACE
-          value: "k8s-assignment"
-      restartPolicy: Always
 ---
 apiVersion: v1
 kind: ServiceAccount

@@ -1,28 +1,4 @@
 apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: mysql-config
-  namespace: k8s-assignment
-data:
-  my.cnf: |
-    [mysqld]
-    bind-address = 0.0.0.0
-    port = 3306
-    datadir = /var/lib/mysql
-    socket = /var/run/mysqld/mysqld.sock
-    pid-file = /var/run/mysqld/mysqld.pid
-    log-error = /var/log/mysql/error.log
-    server-id = 1
-    log-bin = mysql-bin
-    binlog-format = ROW
-    expire_logs_days = 7
-    max_connections = 200
-    innodb_buffer_pool_size = 256M
-    innodb_log_file_size = 64M
-    innodb_flush_log_at_trx_commit = 1
-    innodb_lock_wait_timeout = 50
----
-apiVersion: v1
 kind: Secret
 metadata:
   name: mysql-secret
@@ -32,38 +8,12 @@ data:
   mysql-root-password: cm9vdA==  # root
   mysql-password: dGVzdA==       # test
 ---
-apiVersion: v1
-kind: PersistentVolume
-metadata:
-  name: mysql-pv
-  namespace: k8s-assignment
-spec:
-  capacity:
-    storage: 10Gi
-  accessModes:
-    - ReadWriteOnce
-  hostPath:
-    path: /tmp/mysql-data
----
-apiVersion: v1
-kind: PersistentVolumeClaim
-metadata:
-  name: mysql-pvc
-  namespace: k8s-assignment
-spec:
-  accessModes:
-    - ReadWriteOnce
-  resources:
-    requests:
-      storage: 10Gi
----
 apiVersion: apps/v1
-kind: StatefulSet
+kind: Deployment
 metadata:
   name: mysql
   namespace: k8s-assignment
 spec:
-  serviceName: mysql
   replicas: 1
   selector:
     matchLabels:
@@ -93,11 +43,6 @@ spec:
             secretKeyRef:
               name: mysql-secret
               key: mysql-password
-        volumeMounts:
-        - name: mysql-storage
-          mountPath: /var/lib/mysql
-        - name: mysql-config
-          mountPath: /etc/mysql/conf.d
         resources:
           requests:
             memory: "256Mi"
@@ -105,13 +50,6 @@ spec:
           limits:
             memory: "512Mi"
             cpu: "500m"
-      volumes:
-      - name: mysql-storage
-        persistentVolumeClaim:
-          claimName: mysql-pvc
-      - name: mysql-config
-        configMap:
-          name: mysql-config
 ---
 apiVersion: v1
 kind: Service
