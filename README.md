@@ -294,6 +294,5 @@ kubectl exec -it deployment/nginx -n k8s-assignment -- curl -v --connect-timeout
 
 Created by Uttara Deshpande for Kubernetes assignment submission.
 
----
-
+```
 **Note**: This is an MVP implementation focused on demonstrating core Kubernetes concepts. The solution is fully functional and meets all assignment requirements. The Network Policy manifests are correctly configured and would work in a cluster with proper CNI support. Web page access is achieved through port forwarding, which is a standard Kubernetes practice for development and testing.
